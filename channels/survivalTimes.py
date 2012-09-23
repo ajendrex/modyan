@@ -45,8 +45,9 @@ def main():
   commandLineParser = argparse.ArgumentParser(description="Calculates Mean Square Displacement and Survival Times for atoms in a trajectory. Formulas according to Liu et.al. 2004.")
   commandLineParser.add_argument('atomInfoFile', help='Atoms info file. Tab Separated Values: frame index x y z')
   commandLineParser.add_argument('tau', nargs='+', type=int, help='List of dt to evaluate, in picoseconds')
-  commandLineParser.add_argument('-T', dest="maxT", default=1000000, type=int, help='Maximum time to evaluate, in picoseconds. Default: 1000000')
-  commandLineParser.add_argument('-step', dest="timestep", default=1, type=int, help='Time Step value for every frame, in picoseconds. Default: 1')
+  commandLineParser.add_argument('-T', '--time', dest="maxT", default=1000000, type=int, help='Maximum time to evaluate, in picoseconds. Default: 1000000')
+  commandLineParser.add_argument('-s', '--step', dest="timestep", default=1, type=int, help='Time Step value for every frame, in picoseconds. Default: 1')
+  commandLineParser.add_argument('-a', '--axis', dest="axis", nargs='+', default=['x','y','z'], choices='xyz', help='Time Step value for every frame, in picoseconds. Default: 1')
   options = commandLineParser.parse_args()
 
   try:
@@ -119,7 +120,14 @@ def main():
 
     D = frameDict[frame]
     # Here you can remove the coordinates you don't want to consider :)
-    D[index] = numpy.array([x,y,z])
+    axisArray = []
+    if 'x' in options.axis:
+      axisArray.append(x)
+    if 'y' in options.axis:
+      axisArray.append(y)
+    if 'z' in options.axis:
+      axisArray.append(z)
+    D[index] = numpy.array(axisArray)
       
   # If previously we got to the end of the file we still have to print the last line
   if frame - baseFrame == maxTau and baseFrame <= options.maxT / options.timestep:
