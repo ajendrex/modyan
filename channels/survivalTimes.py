@@ -24,7 +24,7 @@ def getSurvivors(survivors,frameDict,startFrame,stopFrame):
     survivors = [survivor for survivor in survivors if survivor in frameDict[i]]
   return survivors
 
-def survivalTime(baseFrame, maxTau, tauList, frameDict, SD, Ptau):
+def survivalTime(baseFrame, maxTau, tauList, frameDict, SD, Ptau, modform):
   survivors = list(frameDict[baseFrame].keys())
   N = len(survivors)
   startFrame = baseFrame
@@ -36,9 +36,18 @@ def survivalTime(baseFrame, maxTau, tauList, frameDict, SD, Ptau):
         Ptau[tau][baseFrame] = 0.0
       else:
         survivors = getSurvivors(survivors,frameDict,startFrame,i)
-        SD[tau][baseFrame] = getSD(survivors,frameDict,baseFrame,i,N)
-        Ptau[tau][baseFrame] = float(len(survivors)) / N
-      startFrame = i
+        if modform:
+          Nttau = len(survivors)
+          if Nttau == 0:
+            SD[tau][baseFrame] = 0.0
+            Ptau[tau][baseFrame] = 0.0
+          else:
+            SD[tau][baseFrame] = getSD(survivors,frameDict,baseFrame,i,Nttau)
+            Ptau[tau][baseFrame] = float(len(survivors)) / N
+        else:
+          SD[tau][baseFrame] = getSD(survivors,frameDict,baseFrame,i,N)
+          Ptau[tau][baseFrame] = float(len(survivors)) / N
+    startFrame = i
 
 def main():
 
@@ -48,6 +57,7 @@ def main():
   commandLineParser.add_argument('-T', '--time', dest="maxT", default=1000000, type=int, help='Maximum time to evaluate, in picoseconds. Default: 1000000')
   commandLineParser.add_argument('-s', '--step', dest="timestep", default=1, type=int, help='Time Step value for every frame, in picoseconds. Default: 1')
   commandLineParser.add_argument('-a', '--axis', dest="axis", nargs='+', default=['x','y','z'], choices='xyz', help='Time Step value for every frame, in picoseconds. Default: 1')
+  commandLineParser.add_argument('-m', '--modify-formula', dest="modform", action="store_true", help="Modify MSD formula so that the summatory of displacements is divided by N(t+tau) instead of N(t). See formula 14 in Liu et. al., 2004")
   options = commandLineParser.parse_args()
 
   try:
@@ -103,7 +113,7 @@ def main():
           break
       if frame - baseFrame > maxTau:
         for baseFrame in range(baseFrame,frame-maxTau):
-          survivalTime(baseFrame,maxTau,options.tau,frameDict,SD,Ptau)
+          survivalTime(baseFrame,maxTau,options.tau,frameDict,SD,Ptau,options.modform)
           print(str(baseFrame*options.timestep), end="")
           for tau in tauList:
             sd = SD[tau][baseFrame]
@@ -132,7 +142,7 @@ def main():
   # If previously we got to the end of the file we still have to print the last line
   if frame - baseFrame == maxTau and baseFrame <= options.maxT / options.timestep:
     for baseFrame in range(baseFrame,frame+1-maxTau):
-      survivalTime(baseFrame,maxTau,options.tau,frameDict,SD,Ptau)
+      survivalTime(baseFrame,maxTau,options.tau,frameDict,SD,Ptau,options.modform)
       print(str(baseFrame*options.timestep), end="")
       for tau in tauList:
         sd = SD[tau][baseFrame]
