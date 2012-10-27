@@ -9,6 +9,11 @@ import numpy
 from csv import DictReader
 import copy
 
+def pout(s="", **printOptions):
+  global options
+  print(s, file=options.outfile, **printOptions)
+  options.outfile.flush()
+
 def getSD(survivors,frameDict,baseFrame,stopFrame,N):
   if N == 0:
     return 0.0
@@ -50,26 +55,14 @@ def survivalTime(baseFrame, maxTau, tauList, frameDict, SD, Ptau, modform):
     startFrame = i
 
 def main():
+  global options
 
-  commandLineParser = argparse.ArgumentParser(description="Calculates Mean Square Displacement and Survival Times for atoms in a trajectory. Formulas according to Liu et.al. 2004.")
-  commandLineParser.add_argument('atomInfoFile', help='Atoms info file. Tab Separated Values: frame index x y z')
-  commandLineParser.add_argument('tau', nargs='+', type=int, help='List of dt to evaluate, in picoseconds')
-  commandLineParser.add_argument('-T', '--time', dest="maxT", default=1000000, type=int, help='Maximum time to evaluate, in picoseconds. Default: 1000000')
-  commandLineParser.add_argument('-s', '--step', dest="timestep", default=1, type=int, help='Time Step value for every frame, in picoseconds. Default: 1')
-  commandLineParser.add_argument('-a', '--axis', dest="axis", nargs='+', default=['x','y','z'], choices='xyz', help='Time Step value for every frame, in picoseconds. Default: 1')
-  commandLineParser.add_argument('-m', '--modify-formula', dest="modform", action="store_true", help="Modify MSD formula so that the summatory of displacements is divided by N(t+tau) instead of N(t). See formula 14 in Liu et. al., 2004")
-  options = commandLineParser.parse_args()
-
-  try:
-    f = open(options.atomInfoFile, "r")
-  except IOError:
-    print("Couldn't open " + atomInfoFile)
-  reader = DictReader(f, delimiter='\t')
+  reader = DictReader(options.atomInfoFile, delimiter='\t')
 
   options.tau.sort()
   for tau in options.tau:
     if tau % options.timestep != 0:
-      print("Wrong tau or timestep values. Tau values should be divisible by timestep!")
+      pout("Wrong tau or timestep values. Tau values should be divisible by timestep!")
       raise ValueError
   options.tau = [int(x) for x in list(numpy.array(options.tau) / options.timestep)]
   tauList = copy.deepcopy(options.tau)
@@ -87,12 +80,12 @@ def main():
   SDSum = {}
   PtauSum = {}
 
-  print("t",end="")
+  pout("t",end="")
   for tau in tauList:
     SDSum[tau] = 0
     PtauSum[tau] = 0
-    print("\tSD(" + str(tau*options.timestep) + ")\tP(" + str(tau*options.timestep) + ")", end="")
-  print()
+    pout("\tSD(" + str(tau*options.timestep) + ")\tP(" + str(tau*options.timestep) + ")", end="")
+  pout()
   
   for atom in reader:
     frame = int(atom["frame"])
@@ -114,14 +107,14 @@ def main():
       if frame - baseFrame > maxTau:
         for baseFrame in range(baseFrame,frame-maxTau):
           survivalTime(baseFrame,maxTau,options.tau,frameDict,SD,Ptau,options.modform)
-          print(str(baseFrame*options.timestep), end="")
+          pout(str(baseFrame*options.timestep), end="")
           for tau in tauList:
             sd = SD[tau][baseFrame]
             p = Ptau[tau][baseFrame]
             SDSum[tau] += sd
             PtauSum[tau] += p
-            print("\t" + str(sd) + "\t" + str(p), end="")
-          print()
+            pout("\t" + str(sd) + "\t" + str(p), end="")
+          pout()
           sys.stdout.flush()
           del frameDict[baseFrame]
         baseFrame += 1
@@ -143,24 +136,33 @@ def main():
   if frame - baseFrame == maxTau and baseFrame <= options.maxT / options.timestep:
     for baseFrame in range(baseFrame,frame+1-maxTau):
       survivalTime(baseFrame,maxTau,options.tau,frameDict,SD,Ptau,options.modform)
-      print(str(baseFrame*options.timestep), end="")
+      pout(str(baseFrame*options.timestep), end="")
       for tau in tauList:
         sd = SD[tau][baseFrame]
         p = Ptau[tau][baseFrame]
         SDSum[tau] += sd
         PtauSum[tau] += p
-        print("\t" + str(sd) + "\t" + str(p), end="")
-      print()
+        pout("\t" + str(sd) + "\t" + str(p), end="")
+      pout()
       sys.stdout.flush()
     baseFrame += 1
 
   T = baseFrame - firstFrame
 
-  print("Averages", end="")
+  pout("Averages", end="")
   for tau in tauList:
     MSDtau = float(SDSum[tau]) / T 
     Ptau = float(PtauSum[tau]) / T
-    print("\t" + str(MSDtau) + "(T=" + str(T) + ")\t" + str(Ptau) + "(T=" + str(T) + ")", end="")
-  print()
+    pout("\t" + str(MSDtau) + "(T=" + str(T) + ")\t" + str(Ptau) + "(T=" + str(T) + ")", end="")
+  pout()
 
+commandLineParser = argparse.ArgumentParser(description="Calculates Mean Square Displacement and Survival Times for atoms in a trajectory. Formulas according to Liu et.al. 2004.")
+commandLineParser.add_argument('atomInfoFile', type=argparse.FileType('r'), help='Atoms info file. Tab Separated Values: frame index x y z')
+commandLineParser.add_argument('tau', nargs='+', type=int, help='List of dt to evaluate, in picoseconds')
+commandLineParser.add_argument('-T', '--time', dest="maxT", default=1000000, type=int, help='Maximum time to evaluate, in picoseconds. Default: 1000000')
+commandLineParser.add_argument('-s', '--step', dest="timestep", default=1, type=int, help='Time Step value for every frame, in picoseconds. Default: 1')
+commandLineParser.add_argument('-a', '--axis', dest="axis", nargs='+', default=['x','y','z'], choices='xyz', help='Axes to consider when calculating displacement. Default: x y z')
+commandLineParser.add_argument('-m', '--modify-formula', dest="modform", action="store_true", help="Modify MSD formula so that the summatory of displacements is divided by N(t+tau) instead of N(t). See formula 14 in Liu et. al., 2004")
+commandLineParser.add_argument('-o', '--output', dest="outfile", nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file. Default: console")
+options = commandLineParser.parse_args()
 main()
