@@ -5,8 +5,6 @@
 
 import sys
 import argparse
-import csv
-import numpy
 
 def main():
 
