@@ -5,6 +5,7 @@
 
 import sys
 import argparse
+import textwrap
 
 def getNumber(s):
   try:
@@ -30,6 +31,7 @@ def main():
   strains = []
   for row in f:
     splittedRow = row.strip().split("\t")
+    if len(splittedRow) < 4: continue
     position = getNumber(splittedRow[1])
     if (position):
       strain = splittedRow[0]
@@ -46,7 +48,9 @@ def main():
         if (reference[position] != splittedRow[2]):
           print("Error!, reference sequence shows different nucleotids for the position " + str(position))
           sys.exit()
-  
+
+  SNPpositions.sort()
+  strains.sort()
   for strain in strains:
     seq = ""
     for position in SNPpositions:
@@ -54,8 +58,8 @@ def main():
         seq += SNPs[position][strain]
       else:
         seq += reference[position]
-    fout = open(strain + ".seq", "w")
-    fout.write(seq)
-    fout.close()
+    print(">" + strain)
+    for line in textwrap.wrap(seq, width=80):
+      print(line)
 
 main()
