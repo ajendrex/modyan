@@ -9,7 +9,7 @@ import textwrap
 
 def getNumber(s):
   try:
-    return float(s)
+    return int(float(s))
   except:
     return False
 
@@ -17,6 +17,7 @@ def main():
 
   commandLineParser = argparse.ArgumentParser(description="Produces a nucleotid sequence from only SNPs positions")
   commandLineParser.add_argument(metavar='FILE', dest="inputFile", help='Tabulated input file with columns: Strain, Reference Position, Reference Base, Allele Base')
+  commandLineParser.add_argument("-t", "--table", dest="tableMode", default=False, action="store_true", help="Prints a single file in table mode")
   options = commandLineParser.parse_args()
 
   try:
@@ -51,15 +52,27 @@ def main():
 
   SNPpositions.sort()
   strains.sort()
-  for strain in strains:
-    seq = ""
+  if not options.tableMode:
+    for strain in strains:
+      seq = ""
+      for position in SNPpositions:
+        if (strain in SNPs[position]):
+          seq += SNPs[position][strain]
+        else:
+          seq += reference[position]
+      print(">" + strain)
+      for line in textwrap.wrap(seq, width=80):
+        print(line)
+  else:
+    print("position\t" + "\t".join(strains))
     for position in SNPpositions:
-      if (strain in SNPs[position]):
-        seq += SNPs[position][strain]
-      else:
-        seq += reference[position]
-    print(">" + strain)
-    for line in textwrap.wrap(seq, width=80):
-      print(line)
+      print(position, end="")
+      for strain in strains:
+        if (strain in SNPs[position]):
+          print("\t" + SNPs[position][strain], end="")
+        else:
+          print("\t" + reference[position], end="")
+      print()
+
 
 main()
