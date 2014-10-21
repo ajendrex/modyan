@@ -13,33 +13,21 @@ def calcIdentityAndLengthFraction(r):
   alignedLength = 0
   matches = 0
   for op,length in r.cigar:
-    if op == 0:
+    if op == 0 or op == 7: #MATCH and EQUAL
       seqLength += length
       alignedLength += length
       matches += length
       continue
-    if op == 1:
+    if op == 1 or op == 8: #INSERTION and MISMATCH
       seqLength += length
       alignedLength += length
       continue
-    if op == 3:
-      alignedLength += length
-      continue
-    if op == 4:
+    if op == 4 or op == 5: #SOFT_CLIP and HARD_CLIP
       seqLength += length
-      continue
-    if op == 5:
-      seqLength += length
-      continue
-    if op == 7:
-      seqLength += length
-      alignedLength += length
-      matches += length
-      continue
-    if op == 8:
-      seqLength += length
-      alignedLength += length
-  return (matches / alignedLength, alignedLength / seqLength)
+  try:
+    return (matches / alignedLength, alignedLength / seqLength)
+  except Exception:
+    return (0,0)
 
 def main():
 
